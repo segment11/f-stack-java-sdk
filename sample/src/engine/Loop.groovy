@@ -106,11 +106,17 @@ class Loop extends Invoker.Callback {
     void onServerEvent(int index, Sock.S server) {
         try {
             def x = Invoker.evt_filter(index)
-            if (x == Engine.evfilt_read) {
+            if (x != Engine.evfilt_read) {
+                log.warn 'unknown server event, x: {}', x
+                return
+            }
+
+            int available = Invoker.evt_data(index)
+            do {
                 int clientFd = Invoker.accept(server.fd)
                 if (clientFd < 0) {
                     log.warn 'accept error, client fd: {}', clientFd
-                    return
+                    break
                 }
                 log.info 'accept client fd: {}', clientFd
 
@@ -128,9 +134,9 @@ class Loop extends Invoker.Callback {
                 client.status = SockStatus.CONNECTED
                 engine.socks.put(clientFd, client)
                 server.listener.onClientConnect(server, client)
-            } else {
-                log.warn 'unknown server event, x: {}', x
-            }
+
+                available--
+            } while (available > 0)
         } catch (Exception ex) {
             log.error('handle server event error, server fd: ' + server.fd, ex)
         }
