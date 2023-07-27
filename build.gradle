@@ -1,0 +1,92 @@
+plugins {
+    id 'java'
+}
+
+// change here, h == hpp
+String cppH = 'cpp_proj/library.hpp'
+
+def osName = System.properties['os.name'].toString().replaceAll(' ', '').toLowerCase()
+def osMap = [:]
+osMap['windows'] = ~/.*win.*/
+osMap['linux'] = ~/.*linux.*/
+osMap['MACOSX'] = ~/.*darwin.*/
+
+def platform = osMap.find { osName ==~ it.value }?.key
+def arch = System.properties['os.arch'] ==~ /.*64.*/ ? 'x86_64' : 'i386'
+def currentPlatformArch = "${platform}-${arch}".toString()
+
+repositories {
+    maven {
+        url 'https://maven.aliyun.com/nexus/content/groups/public/'
+    }
+    mavenCentral()
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src']
+        }
+    }
+}
+
+sourceCompatibility = 17
+targetCompatibility = 17
+
+dependencies {
+    implementation group: 'org.bytedeco', name: 'javacpp', version: '1.5.9'
+}
+
+task prepare(type: Copy) {
+    from configurations.runtimeClasspath.findAll {
+        it.name.contains('javacpp')
+    }
+    into 'src'
+}
+
+task prepareHpp(type: Copy) {
+    from cppH
+    into 'src/ff'
+}
+
+prepare.dependsOn prepareHpp
+
+task initDir {
+    if (!new File('output').exists()) {
+        ant.mkdir dir: 'output'
+    }
+}
+
+prepare.dependsOn initDir
+
+task genJNISo(type: Exec) {
+    workingDir = 'src'
+    commandLine 'java', '-jar', 'javacpp-1.5.9.jar', 'FF.java'
+}
+
+task cleanJNISo {
+    def dir = new File('src/ff/' + currentPlatformArch)
+    if (dir.exists()) {
+        if (new File(dir, 'libjniInvoker.so').exists()) {
+            ant.move(file: 'src/ff/' + currentPlatformArch + '/libjniInvoker.so', todir: 'output')
+        }
+        ant.delete(dir: 'src/ff/' + currentPlatformArch)
+    }
+    ant.delete(dir: 'src/ff', includes: '**/*.class')
+    ant.delete(dir: 'src/ff', includes: '**/*.hpp')
+    ant.delete(dir: 'src/ff', includes: '**/*.cpp')
+    ant.delete(dir: 'src', includes: '**/*.jar')
+}
+
+/**
+ * 0. cd workspace/f-stack-java-sdk
+ * 1. gradle jar && mkdir output && cp build/libs/ff_jni.jar output/
+ * 2. gradle prepare
+ * 3. cd src && java -jar javacpp-1.5.9.jar -Dplatform.linkpath=/usr/local/lib/x86_64-linux-gnu -Dplatform.link=fstack ff/Invoker.java
+ * 4. cd .. && gradle cleanJNISo
+ * 5. cd sample && gradle jar
+ * 6. cp ../output/*.so ./build/libs
+ * 7. cp ${F-STACK}/lib/libfstack.so ./build/libs
+ * 8. cp ${F-STACK}/config.ini ./build/libs
+ * 9. cd build/libs && java -Djava.library.path=. -jar sample.jar --procType=primary --procId=0 --server --http --port=8080
+ */
