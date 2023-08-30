@@ -3,7 +3,7 @@ import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Options
 import org.slf4j.LoggerFactory
-import sample.HttpResponseServer
+import sample.HttpDemoServer
 import sample.PingPong
 
 def log = LoggerFactory.getLogger(this.getClass())
@@ -36,7 +36,7 @@ if (handlerId < 0) {
 final int serverPort = cmd.hasOption('port') ? cmd.getOptionValue('port') as int : 12345
 if (cmd.hasOption('server')) {
     if (cmd.hasOption('http')) {
-        def http = new HttpResponseServer(engine)
+        def http = new HttpDemoServer(engine)
         engine.createServer(serverPort, http)
     } else {
         def pp = new PingPong(engine)

@@ -1,15 +1,18 @@
 package sample
 
-import engine.Engine
 import engine.Sock
+import engine.http.HeaderBody
+import engine.http.HttpBaseServer
 import groovy.transform.CompileStatic
+import groovy.transform.InheritConstructors
 import groovy.util.logging.Slf4j
 
 import java.nio.ByteBuffer
 
 @CompileStatic
 @Slf4j
-class HttpResponseServer implements Sock.ServerListener {
+@InheritConstructors
+class HttpDemoServer extends HttpBaseServer {
     private static ByteBuffer bufHtml = ByteBuffer.allocateDirect(1024)
     private static int bufSize = 1024
 
@@ -22,21 +25,13 @@ class HttpResponseServer implements Sock.ServerListener {
         def bytes = html.getBytes()
         bufHtml.put(bytes)
         bufSize = bytes.length
-        bufHtml.flip()
 
         log.info 'html buf size: {}', bufSize
     }
 
-    private Engine engine
-
-    HttpResponseServer(Engine engine) {
-        this.engine = engine
-    }
-
-    // server side
     @Override
-    void onClientData(Sock.S server, Sock.C client, ByteBuffer buf, int len) {
-        client.write(bufHtml, bufSize)
+    void doWithHeaderBody(Sock.C client, HeaderBody headerBody) {
         bufHtml.flip()
+        client.write(bufHtml, bufSize)
     }
 }

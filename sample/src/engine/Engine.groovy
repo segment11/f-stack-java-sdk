@@ -4,8 +4,6 @@ import ff.Invoker
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 
-import java.nio.ByteBuffer
-
 @CompileStatic
 @Slf4j
 class Engine {
@@ -112,7 +110,7 @@ class Engine {
         socks.get(fd)
     }
 
-    void start(int bufSize = 1024) {
+    void start(int bufSize = 1024 * 4) {
         def cb = new Loop(handleId, this, bufSize)
         Invoker.run(cb)
         log.info 'engine started'
